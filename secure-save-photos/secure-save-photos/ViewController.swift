@@ -8,6 +8,9 @@
 
 import UIKit
 import AVFoundation
+import KeychainSwift
+import RNCryptor
+
 class ViewController: UIViewController {
     var previewView: UIView?
     var imagePicker = UIImagePickerController()
@@ -15,6 +18,7 @@ class ViewController: UIViewController {
     var capturePhotoOutput: AVCapturePhotoOutput?
     var videoPreviewLayer: AVCaptureVideoPreviewLayer?
     var error: NSError?
+    var password: String?
     override func viewDidLoad() {
         super.viewDidLoad()
     }
@@ -56,7 +60,7 @@ class ViewController: UIViewController {
     func takePhoto() {
         guard let capturePhotoOutput = self.capturePhotoOutput else { return }
         let photoSettings = AVCapturePhotoSettings()
-        photoSettings.isAutoStillImageStabilizationEnabled = true 
+        photoSettings.isAutoStillImageStabilizationEnabled = true
         photoSettings.isHighResolutionPhotoEnabled = true
         photoSettings.flashMode = .auto
         capturePhotoOutput.capturePhoto(with: photoSettings, delegate: self)
@@ -66,9 +70,29 @@ class ViewController: UIViewController {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
     }
-    @IBAction func snapPicsButtonTapped(_ sender: Any) {
-        print("snapPicsButtonTapped!")
-        setupCamera()
+    
+    func haveUserCreatePassword() {
+        let alertController = UIAlertController(title: "Create Password", message: "", preferredStyle: .alert)
+        alertController.addTextField { (textfield) in
+            //
+        }
+        let submitAction = UIAlertAction(title: "submit", style: .default) { (action) in
+            if let textField = alertController.textFields?[0] {
+                self.password = textField.text
+                self.snapPics()
+            }
+        }
+        
+        let cancelAction = UIAlertAction(title: "cancel", style: .cancel, handler: nil)
+        alertController.addAction(submitAction)
+        alertController.addAction(cancelAction)
+        
+        present(alertController, animated: true, completion: nil)
+        
+    }
+    
+    func snapPics() {
+        self.setupCamera()
         var counter = 0
         Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { (timer) in
             print("timer ticking \(counter)")
@@ -80,6 +104,10 @@ class ViewController: UIViewController {
             }
             counter += 1
         }
+    }
+    @IBAction func snapPicsButtonTapped(_ sender: Any) {
+        print("snapPicsButtonTapped!")
+        haveUserCreatePassword()
     }
 }
 
@@ -96,11 +124,11 @@ extension ViewController: AVCapturePhotoCaptureDelegate {
             AVCapturePhotoOutput.jpegPhotoDataRepresentation(forJPEGSampleBuffer: photoSampleBuffer, previewPhotoSampleBuffer: previewPhotoSampleBuffer) else {
                 return
         }
-
-        let capturedImage = UIImage.init(data: imageData , scale: 1.0)
-        if let image = capturedImage {
-            // Save our captured image to photos album
-            print("Ok we got the image \(image.description)")
+        
+        if let password = password {            
+            let encryptedImage = RNCryptor.encrypt(data: imageData, withPassword: password)
+            let keychain = KeychainSwift()
+            keychain.set(encryptedImage, forKey: "image")
         }
     }
 }
