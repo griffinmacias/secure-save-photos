@@ -1,0 +1,6 @@
+framework module Pods_secure_save_photos {
+  umbrella header "Pods-secure-save-photos-umbrella.h"
+
+  export *
+  module * { export * }
+}
